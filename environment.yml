@@ -1,0 +1,15 @@
+name: genai
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - jupyter
+  - streamlit>=1.31
+  - langchain
+  - langchain-community
+  - huggingface_hub 
+  - pytorch
+  - transformers
+  - accelerate
+  - chromadb
