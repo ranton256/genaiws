@@ -1,39 +1,29 @@
 import os
-import sys
-
 from pathlib import Path
 
 from PyPDF2 import PdfReader
-
+from langchain import hub
 from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
-from langchain_core.callbacks import CallbackManager, StreamingStdOutCallbackHandler
-
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.llms.ollama import Ollama
+from langchain_community.vectorstores import Chroma
+from langchain_core.messages.base import BaseMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-
-from langchain_community.llms.ollama import Ollama
-from langchain_community.embeddings import OllamaEmbeddings
-
-from langchain import hub
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_core.messages.base import BaseMessage
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-from langchain_community.vectorstores import Chroma
-
-# this depends on PyPDF2 and langchainhub packages
-# pip install -U -q PyPDF2 langchainhub
 
 # setup constants
+USE_CUSTOM_PROMPT = False
 
-#MODEL_ID="gemma:2b"
-#MODEL_ID="mistral"
-#MODEL_ID="gemma"
-MODEL_ID="llama3"
+# MODEL_ID="gemma:2b"
+# MODEL_ID="mistral"
+MODEL_ID="gemma"
+# MODEL_ID = "llama3"
 
-#EMBEDDING_MODEL_ID = 'nomic-embed-text'
+# EMBEDDING_MODEL_ID = 'nomic-embed-text'
 EMBEDDING_MODEL_ID = 'snowflake-arctic-embed'
 
 
@@ -42,16 +32,18 @@ def get_model():
     llm = Ollama(
         model=MODEL_ID,
         # You can take out the callback manager to stop printing things to the terminal stdout.
-        #callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
+        # callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
     )
     return llm
+
+
+BASIC_PROMPT = """You are a helpful AI assistant. Answer the user's request accurately."""
 
 RESEARCHER_PROMPT = """I want you to act as an academic research assistant. You are responsible for researching the 
 user's research request and presenting the findings in a paper or article form. Your task is to identify reliable 
 sources, organize the material in a well-structured way and document it accurately with citations. 
 If you don't know the answer, just say that you don't know.
 """
-
 
 RESEARCHER_RAG_PROMPT = """I want you to act as an academic research assistant. You are responsible for researching the 
 user's research request and presenting the findings in a paper or article form. Your task is to identify reliable 
@@ -66,7 +58,7 @@ Use the following pieces of retrieved context as primary sources for your resear
 def basic_chain(model, prompt=None):
     if not prompt:
         prompt = ChatPromptTemplate.from_messages([
-            ("system", RESEARCHER_PROMPT),
+            ("system", BASIC_PROMPT),
             ("human", "My research request is {input}"),
         ])
     chain = prompt | model
@@ -81,12 +73,12 @@ CONTENT_DIR = os.path.join(ROOT_PATH, "gi_guideline_docs")
 
 def list_data_files(data_dir=CONTENT_DIR):
     pdf_paths = Path(data_dir).glob('**/*.pdf')
-    txt_paths = Path(data_dir).glob('**/*.txt') 
+    txt_paths = Path(data_dir).glob('**/*.txt')
     paths = list(pdf_paths)
     paths.extend(txt_paths)
     print(f"Found {len(paths)} documents in {data_dir}")
     return paths
-    
+
 
 def load_data_files(paths):
     all_docs = []
@@ -154,7 +146,6 @@ def make_rag_chain(model, retriever, rag_prompt=None):
     return rag_chain
 
 
-
 def filename_from_url(url):
     filename = url.split("/")[-1]
     return filename
@@ -200,6 +191,9 @@ def ask_chain(chain, query):
 
 def setup_retriever():
     doc_paths = list_data_files()
+    if not doc_paths:
+        print(f"No documents found!")
+        return None
     docs = load_data_files(doc_paths)
     texts = split_documents(docs)
     vs = create_vector_db(texts)
@@ -207,35 +201,46 @@ def setup_retriever():
     return retriever
 
 
+
 def setup_rag():
     model = get_model()
     output_parser = StrOutputParser()
-    base_chain = basic_chain(model) | output_parser
+
     retriever = setup_retriever()
-    rag_chain = make_rag_chain(model, retriever) | output_parser
+    if retriever:
+        if USE_CUSTOM_PROMPT:
+            rag_prompt = ChatPromptTemplate.from_messages([
+                ("system", RESEARCHER_RAG_PROMPT),
+                ("human", "My research request is {question}"),
+            ])
+            chain = make_rag_chain(model, retriever, rag_prompt) | output_parser
+        else:
+            chain = make_rag_chain(model, retriever) | output_parser
+    else:
+        print(f"Could not create retriever. Falling back to base model.")
+        if USE_CUSTOM_PROMPT:
+            chain = basic_chain(model, RESEARCHER_PROMPT) | output_parser
+        else:
+            chain = basic_chain(model) | output_parser
 
-    # Use this if you want to try a custom prompt with RAG.
-    # rag_prompt = ChatPromptTemplate.from_messages([
-    #     ("system", RESEARCHER_RAG_PROMPT),
-    #     ("human", "My research request is {question}"),
-    # ])
-    # rag_chain = make_rag_chain(model, retriever, rag_prompt) | output_parser
-
-    return rag_chain
+    return chain
 
 
 def main():
     rag_chain = setup_rag()
 
-    example_q = "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
-    print("I will use the provided documents to answer your questions.")
-    print("For example: ", example_q)
-    ask_chain(rag_chain, example_q)
+    # example_q = "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
+    # print("I will use the provided documents to answer your questions.")
+    # print("For example: ", example_q)
+    # ask_chain(rag_chain, example_q)
 
     while True:
-        user_input = input("Ask me a question about the documents: ")
-        ask_chain(rag_chain, user_input)
-            
+        user_input = input("Ask me a question about the documents or 'quit' to exit: ")
+        if user_input == "quit":
+            break
+        if user_input:
+            ask_chain(rag_chain, user_input)
+
 
 if __name__ == '__main__':
     main()
