@@ -27,16 +27,6 @@ MODEL_ID="gemma"
 EMBEDDING_MODEL_ID = 'snowflake-arctic-embed'
 
 
-# This uses Ollama so remember to make sure it is running.
-def get_model():
-    llm = Ollama(
-        model=MODEL_ID,
-        # You can take out the callback manager to stop printing things to the terminal stdout.
-        # callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
-    )
-    return llm
-
-
 BASIC_PROMPT = """You are a helpful AI assistant. Answer the user's request accurately."""
 
 RESEARCHER_PROMPT = """I want you to act as an academic research assistant. You are responsible for researching the 
@@ -55,6 +45,22 @@ Use the following pieces of retrieved context as primary sources for your resear
 """
 
 
+# If you want to use the current directory instead of the directory
+# of this source file, you can use "./" instead of __file__
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+CONTENT_DIR = os.path.join(ROOT_PATH, "gi_guideline_docs")
+
+
+# This uses Ollama so remember to make sure it is running.
+def get_model():
+    llm = Ollama(
+        model=MODEL_ID,
+        # You can take out the callback manager to stop printing things to the terminal stdout.
+        # callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
+    )
+    return llm
+
+
 def basic_chain(model, prompt=None):
     if not prompt:
         prompt = ChatPromptTemplate.from_messages([
@@ -63,13 +69,6 @@ def basic_chain(model, prompt=None):
         ])
     chain = prompt | model
     return chain
-
-
-# If you want to use the current directory instead of the directory
-# of this source file, you can use "./" instead of __file__
-ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-CONTENT_DIR = os.path.join(ROOT_PATH, "gi_guideline_docs")
-
 
 def list_data_files(data_dir=CONTENT_DIR):
     pdf_paths = Path(data_dir).glob('**/*.pdf')
