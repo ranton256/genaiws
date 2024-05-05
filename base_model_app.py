@@ -74,14 +74,9 @@ def get_chain():
 
 
 def run():
-    ready = True
-
-    if ready:
-        chain = get_chain()
-        st.subheader("Ask me a question:")
-        show_ui(chain, "How can I help you?")
-    else:
-        st.stop()
+    chain = get_chain()
+    st.subheader("Ask me a question:")
+    show_ui(chain, "How can I help you?")
 
 
 run()

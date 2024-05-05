@@ -42,7 +42,7 @@ def get_model():
     llm = Ollama(
         model=MODEL_ID,
         # You can take out the callback manager to stop printing things to the terminal stdout.
-        callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
+        #callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
     )
     return llm
 
@@ -198,40 +198,44 @@ def ask_chain(chain, query):
     print(f"Response:\n{response}")
 
 
-def main():
-    model = get_model()
-    output_parser = StrOutputParser()
-    base_chain = basic_chain(model) | output_parser
-
+def setup_retriever():
     doc_paths = list_data_files()
     docs = load_data_files(doc_paths)
     texts = split_documents(docs)
     vs = create_vector_db(texts)
     retriever = vs.as_retriever()
+    return retriever
 
-    rag_prompt = ChatPromptTemplate.from_messages([
-        ("system", RESEARCHER_RAG_PROMPT),
-        ("human", "My research request is {question}"),
-    ])
+
+def setup_rag():
+    model = get_model()
+    output_parser = StrOutputParser()
+    base_chain = basic_chain(model) | output_parser
+    retriever = setup_retriever()
     rag_chain = make_rag_chain(model, retriever) | output_parser
 
-    rag_prompt = ChatPromptTemplate.from_messages([
-            ("system", RESEARCHER_RAG_PROMPT),
-            ("human", "My research request is {question}")
-    ])
-    rag_chain_custom_prompt = make_rag_chain(model, retriever, rag_prompt) | output_parser
+    # Use this if you want to try a custom prompt with RAG.
+    # rag_prompt = ChatPromptTemplate.from_messages([
+    #     ("system", RESEARCHER_RAG_PROMPT),
+    #     ("human", "My research request is {question}"),
+    # ])
+    # rag_chain = make_rag_chain(model, retriever, rag_prompt) | output_parser
 
-    questions = [
-        "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
-    ]
+    return rag_chain
 
-    for q in questions:
-        # uncomment these lines to compare results.
-        #sim_search(vs, q)
-        #ask_chain(base_chain, q)
-        ask_chain(rag_chain, q)
-        #ask_chain(rag_chain_custom_prompt, q)
 
+def main():
+    rag_chain = setup_rag()
+
+    example_q = "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
+    print("I will use the provided documents to answer your questions.")
+    print("For example: ", example_q)
+    ask_chain(rag_chain, example_q)
+
+    while True:
+        user_input = input("Ask me a question about the documents: ")
+        ask_chain(rag_chain, user_input)
+            
 
 if __name__ == '__main__':
     main()

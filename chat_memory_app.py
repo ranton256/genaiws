@@ -111,16 +111,11 @@ def show_ui(qa, prompt_to_user="How may I help you?"):
         st.session_state.messages.append(message)
 
 
-
 def run():
-    ready = True
+    chain = get_chain()
+    st.subheader("Ask me a question. I will keep track of our discussion:")
+    show_ui(chain, "How can I help you?")
 
-    if ready:
-        chain = get_chain()
-        st.subheader("Ask me a question. I will keep track of our discussion:")
-        show_ui(chain, "How can I help you?")
-    else:
-        st.stop()
 
 
 run()
