@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import chromadb
+
 from PyPDF2 import PdfReader
 from langchain import hub
 from langchain.docstore.document import Document
@@ -49,16 +51,23 @@ Use the following pieces of retrieved context as primary sources for your resear
 # of this source file, you can use "./" instead of __file__
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 CONTENT_DIR = os.path.join(ROOT_PATH, "gi_guideline_docs")
-
+DB_DIR = os.path.join(ROOT_PATH, "ragdb")
 
 # This uses Ollama so remember to make sure it is running.
-def get_model():
+def get_model(temperature=0.1, top_k=50, top_p=0.7, num_predict=1024):
     llm = Ollama(
         model=MODEL_ID,
         # You can take out the callback manager to stop printing things to the terminal stdout.
         # callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
+
     )
+
+    # These parameters are documented for Ollama at
+    # https://github.com/ollama/ollama/blob/main/docs/modelfile.md
+    llm = llm.bind(temperature=temperature, top_k=top_k, top_p=top_p, num_predict=num_predict)
+
     return llm
+
 
 
 def basic_chain(model, prompt=None):
@@ -167,11 +176,71 @@ def split_documents(docs):
     return texts
 
 
-def create_vector_db(chunks):
-    print(f"Embedding {len(chunks)} chunks into vector DB")
+DEFAULT_COLLECTION_NAME = "langchain"
+
+        
+client_settings = chromadb.config.Settings(
+    is_persistent=True,
+    persist_directory=DB_DIR,
+    anonymized_telemetry=False,
+)
+
+
+def get_chroma_client(db_dir):
+    persistent_client = chromadb.PersistentClient(db_dir)
+    return persistent_client
+
+
+def open_vector_db(db_dir=DB_DIR, collection_name=DEFAULT_COLLECTION_NAME):
+    client=get_chroma_client(db_dir)
     embedding_function = OllamaEmbeddings(model=EMBEDDING_MODEL_ID)
-    vectorstore = Chroma.from_documents(chunks, embedding=embedding_function)
+    
+    db = Chroma(
+        client=client,
+        collection_name=collection_name,
+        embedding_function=embedding_function,
+        client_settings=client_settings
+    )
+
+    return db
+    
+
+def create_vector_db(chunks, collection_name=DEFAULT_COLLECTION_NAME):
+    print(f"Embedding {len(chunks)} chunks into vector DB")
+    # Setup embeddings
+    embedding_function = OllamaEmbeddings(model=EMBEDDING_MODEL_ID)
+
+    vectorstore = Chroma(collection_name=DEFAULT_COLLECTION_NAME,
+                         embedding_function=embedding_function,
+                         persist_directory=DB_DIR,
+                         client_settings=client_settings)
+    
     return vectorstore
+
+
+def open_or_create_vector_db():
+    vs = None
+    try:
+        if os.path.exists(DB_DIR):
+            vs = open_vector_db()
+            print("Opened vector database")
+            return vs
+        else:
+            print("Database not found, creating.")
+    except Exception as ex:
+        print("Exception opening database", ex)
+        print("Database could not be opened, creating.")
+
+    if not vs:
+        print(f"Embedding documents")
+        doc_paths = list_data_files()
+        if not doc_paths:
+            print(f"No documents found!")
+            return None
+        docs = load_data_files(doc_paths)
+        texts = split_documents(docs)
+        vs = create_vector_db(texts)
+    return vs
 
 
 def sim_search(vs, query):
@@ -189,23 +258,13 @@ def ask_chain(chain, query):
 
 
 def setup_retriever():
-    doc_paths = list_data_files()
-    if not doc_paths:
-        print(f"No documents found!")
-        return None
-    docs = load_data_files(doc_paths)
-    texts = split_documents(docs)
-    vs = create_vector_db(texts)
+    vs = open_or_create_vector_db()
     retriever = vs.as_retriever()
     return retriever
 
 
-
-def setup_rag():
-    model = get_model()
+def setup_rag(model, retriever):
     output_parser = StrOutputParser()
-
-    retriever = setup_retriever()
     if retriever:
         if USE_CUSTOM_PROMPT:
             rag_prompt = ChatPromptTemplate.from_messages([
@@ -226,7 +285,9 @@ def setup_rag():
 
 
 def main():
-    rag_chain = setup_rag()
+    model = get_model()
+    retriever = setup_retriever()
+    rag_chain = setup_rag(model, retriever)
 
     # example_q = "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
     # print("I will use the provided documents to answer your questions.")
