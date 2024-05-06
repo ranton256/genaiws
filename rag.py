@@ -122,7 +122,6 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-# TODO: we should not need this anymore (probably)
 def get_question(input_obj):
     if not input_obj:
         return None
