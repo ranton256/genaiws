@@ -1,3 +1,4 @@
 secrets.toml
 gi_guideline_docs/*
 ragdb/
+.ipynb_checkpoints/

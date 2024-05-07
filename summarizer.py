@@ -46,7 +46,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # Download from:
 # https://www.asge.org/docs/default-source/guidelines/asge-guideline-on-screening-and-surveillance-of-barrett-s-esophagus-2019-september-gie.pdf?sfvrsn=a562d352_2
 
-file_path = 'acg_clinical_guideline__diagnosis_and_management.17.pdf'
+file_path = 'gi_guideline_docs/acg_clinical_guideline__diagnosis_and_management.17.pdf'
 the_text = get_document_text(file_path)
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
 chunks = text_splitter.split_documents(the_text)
