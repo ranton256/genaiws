@@ -65,7 +65,8 @@ def create_model(model_params):
 
 @st.cache_resource
 def create_retriever():
-    return setup_retriever()
+    retriever, vs = setup_retriever()
+    return retriever
 
 
 @st.cache_resource

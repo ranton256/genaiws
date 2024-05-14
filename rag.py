@@ -16,20 +16,19 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-
 # setup constants
-USE_CUSTOM_PROMPT = False
+USE_CUSTOM_PROMPT = True
 
-# MODEL_ID="gemma:2b"
+MODEL_ID="gemma:2b"
 # MODEL_ID="mistral"
-MODEL_ID="gemma"
+# MODEL_ID = "gemma"
 # MODEL_ID = "llama3"
 
 # EMBEDDING_MODEL_ID = 'nomic-embed-text'
 EMBEDDING_MODEL_ID = 'snowflake-arctic-embed'
 
-
 BASIC_PROMPT = """You are a helpful AI assistant. Answer the user's request accurately."""
+
 
 RESEARCHER_PROMPT = """I want you to act as an academic research assistant. You are responsible for researching the 
 user's research request and presenting the findings in a paper or article form. Your task is to identify reliable 
@@ -46,12 +45,12 @@ Use the following pieces of retrieved context as primary sources for your resear
 
 """
 
-
 # If you want to use the current directory instead of the directory
 # of this source file, you can use "./" instead of __file__
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 CONTENT_DIR = os.path.join(ROOT_PATH, "gi_guideline_docs")
 DB_DIR = os.path.join(ROOT_PATH, "ragdb")
+
 
 # This uses Ollama so remember to make sure it is running.
 def get_model(temperature=0.1, top_k=50, top_p=0.7, num_predict=1024):
@@ -69,7 +68,6 @@ def get_model(temperature=0.1, top_k=50, top_p=0.7, num_predict=1024):
     return llm
 
 
-
 def basic_chain(model, prompt=None):
     if not prompt:
         prompt = ChatPromptTemplate.from_messages([
@@ -78,6 +76,7 @@ def basic_chain(model, prompt=None):
         ])
     chain = prompt | model
     return chain
+
 
 def list_data_files(data_dir=CONTENT_DIR):
     pdf_paths = Path(data_dir).glob('**/*.pdf')
@@ -135,15 +134,21 @@ def get_question(input_obj):
         raise Exception("string or dict with 'question' key expected as RAG chain input.")
 
 
-def make_rag_chain(model, retriever, rag_prompt=None):
+def make_rag_chain(model, retriever, rag_prompt=None, process_docs=None):
     # We will use a prompt template from langchain hub.
     if not rag_prompt:
         rag_prompt = hub.pull("rlm/rag-prompt")
 
+    def passthrough_hook(docs):
+        return docs
+
+    if not process_docs:
+        process_docs = passthrough_hook
+
     # Use RunnablePassthrough to add some custom processing into our chain.
     rag_chain = (
             {
-                "context": RunnableLambda(get_question) | retriever | format_docs,
+                "context": RunnableLambda(get_question) | retriever | process_docs | RunnableLambda(format_docs),
                 "question": RunnablePassthrough()
             }
             | rag_prompt
@@ -177,23 +182,22 @@ def split_documents(docs):
 
 DEFAULT_COLLECTION_NAME = "langchain"
 
-        
 client_settings = chromadb.config.Settings(
     is_persistent=True,
     persist_directory=DB_DIR,
-    anonymized_telemetry=False,
+    anonymized_telemetry=False
 )
 
 
 def get_chroma_client(db_dir):
-    persistent_client = chromadb.PersistentClient(db_dir)
+    persistent_client = chromadb.PersistentClient(db_dir, settings=client_settings)
     return persistent_client
 
 
 def open_vector_db(db_dir=DB_DIR, collection_name=DEFAULT_COLLECTION_NAME):
-    client=get_chroma_client(db_dir)
+    client = get_chroma_client(db_dir)
     embedding_function = OllamaEmbeddings(model=EMBEDDING_MODEL_ID)
-    
+
     db = Chroma(
         client=client,
         collection_name=collection_name,
@@ -202,18 +206,21 @@ def open_vector_db(db_dir=DB_DIR, collection_name=DEFAULT_COLLECTION_NAME):
     )
 
     return db
-    
 
-def create_vector_db(chunks, collection_name=DEFAULT_COLLECTION_NAME):
+
+def create_vector_db(chunks, collection_name=DEFAULT_COLLECTION_NAME, db_dir=DB_DIR,):
     print(f"Embedding {len(chunks)} chunks into vector DB")
     # Setup embeddings
     embedding_function = OllamaEmbeddings(model=EMBEDDING_MODEL_ID)
 
-    vectorstore = Chroma(collection_name=DEFAULT_COLLECTION_NAME,
+    client = get_chroma_client(db_dir)
+    vectorstore = Chroma(client=client,
+                         collection_name=collection_name,
                          embedding_function=embedding_function,
                          persist_directory=DB_DIR,
                          client_settings=client_settings)
-    
+
+    vectorstore.add_documents(chunks)
     return vectorstore
 
 
@@ -248,21 +255,23 @@ def sim_search(vs, query):
     for i, text in enumerate(results):
         content = text.page_content
         print(f"Result {i + 1}: {content}\n")
+    return results
 
 
 def ask_chain(chain, query):
     print(f"Query: {query}\nThinking...")
     response = chain.invoke(query)
     print(f"Response:\n{response}")
+    return response
 
 
 def setup_retriever():
     vs = open_or_create_vector_db()
     retriever = vs.as_retriever()
-    return retriever
+    return retriever, vs
 
 
-def setup_rag(model, retriever):
+def setup_rag(model, retriever, process_docs=None):
     output_parser = StrOutputParser()
     if retriever:
         if USE_CUSTOM_PROMPT:
@@ -270,9 +279,9 @@ def setup_rag(model, retriever):
                 ("system", RESEARCHER_RAG_PROMPT),
                 ("human", "My research request is {question}"),
             ])
-            chain = make_rag_chain(model, retriever, rag_prompt) | output_parser
+            chain = make_rag_chain(model, retriever, rag_prompt, process_docs=process_docs) | output_parser
         else:
-            chain = make_rag_chain(model, retriever) | output_parser
+            chain = make_rag_chain(model, retriever, process_docs=process_docs) | output_parser
     else:
         print(f"Could not create retriever. Falling back to base model.")
         if USE_CUSTOM_PROMPT:
@@ -284,8 +293,10 @@ def setup_rag(model, retriever):
 
 
 def main():
+    queries = []
+
     model = get_model()
-    retriever = setup_retriever()
+    retriever, vs = setup_retriever()
     rag_chain = setup_rag(model, retriever)
 
     # example_q = "What criteria are used to determine which patients to screen for esophageal adenocarcinoma?"
@@ -294,11 +305,15 @@ def main():
     # ask_chain(rag_chain, example_q)
 
     while True:
-        user_input = input("Ask me a question about the documents or 'quit' to exit: ")
-        if user_input == "quit":
+        try:
+            user_input = input("Ask me a question about the documents or 'quit' to exit: ")
+            if user_input == "quit":
+                break
+            if user_input:
+                queries.append(user_input)
+                ask_chain(rag_chain, user_input)
+        except EOFError:
             break
-        if user_input:
-            ask_chain(rag_chain, user_input)
 
 
 if __name__ == '__main__':
