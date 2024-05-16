@@ -68,7 +68,7 @@ def run_no_pytest():
 
 
 @pytest.mark.parametrize(
-    "rag_test_case",
+    "test_case",
     dataset,
 )
 def test_rag(test_case: LLMTestCase):
