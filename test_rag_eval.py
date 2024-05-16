@@ -49,37 +49,26 @@ dataset.add_test_cases_from_csv_file(
     retrieval_context_col_delimiter= ";"
 )
 
-def run_no_pytest():
-    dataset.evaluate(
-        metrics=[
-            contextual_precision,
-            contextual_recall,
-            contextual_relevancy,
-            answer_relevancy,
-            faithfulness,
-        ]
-    )
+@pytest.mark.parametrize(
+    "test_case",
+    dataset,
+)
+def test_rag_retrieval(test_case: LLMTestCase):
+    contextual_precision = ContextualPrecisionMetric(threshold=0.6)
+    contextual_recall = ContextualRecallMetric(threshold=0.3)
+    contextual_relevancy = ContextualRelevancyMetric(threshold=0.5)
     
-    # show a result for reference.
-    results[0]
-    
-    with open('results.pkl', 'wb') as results_file:
-        pickle.dump(results, results_file)
+    assert_test(test_case, [contextual_precision, contextual_recall, contextual_relevancy])
 
 
 @pytest.mark.parametrize(
     "test_case",
     dataset,
 )
-def test_rag(test_case: LLMTestCase):
-    contextual_precision = ContextualPrecisionMetric()
-    contextual_recall = ContextualRecallMetric()
-    contextual_relevancy = ContextualRelevancyMetric()
-    
-    answer_relevancy = AnswerRelevancyMetric()
-    faithfulness = FaithfulnessMetric()
+def test_rag_generation(test_case: LLMTestCase):
+    answer_relevancy = AnswerRelevancyMetric(threshold=0.5)
+    faithfulness = FaithfulnessMetric(threshold=0.5)
 
-    assert_test(test_case, [contextual_precision, contextual_recall, contextual_relevancy])
     assert_test(test_case, [answer_relevancy, faithfulness])
 
 

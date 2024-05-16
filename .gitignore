@@ -2,3 +2,9 @@ secrets.toml
 gi_guideline_docs/*
 ragdb/
 .ipynb_checkpoints/
+.deepeval
+__pycache__/
+.deepeval-cache.json
+*.sqlite
+*.pkl
+.temp-deepeval-cache.json
