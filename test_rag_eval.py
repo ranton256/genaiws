@@ -19,7 +19,7 @@ import os
 
 
 # runs on subset of test cases for speedy debugging
-want_subset = True
+want_subset = False
 
 # Setup OpenAI API key
 with open('secrets.toml', 'r') as f:

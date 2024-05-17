@@ -43,7 +43,8 @@ def main():
 
     testset_df = pd.read_csv(testset_path)
 
-    testset_df = testset_df.head(3)   # TODO; remove
+    # create smaller subset for rapid testing.
+    # testset_df = testset_df.head(3)
     
     queries = testset_df['Question']
 
