@@ -20,13 +20,9 @@ They are also available at https://tinyurl.com/setupgenaiws
 
 This repo contains the source code and other files for the Interactive Hands-On Session  - Generative AI 
 
-
-
 This workshop covers foundational models and applications in natural language processing, in context of the medical field in general and gastroenterology in specific.
 
-
-
-Topics covered include
+### Topics Covered
 
 * Introduction to generative AI and large language model (LLM) concepts such as tokenization, embedding, transformer models, 
 * Techniques for adapting pretrained models to new data and use cases iIncluding transfer learning, fine-tuning, retrieval augmented generation (RAG), reinforcement learning, and prompt engineering.
@@ -35,14 +31,8 @@ Topics covered include
 * Walkthrough of building a RAG system for chatting with clinical guidelines and related documents for the diagnosis and treatment of [Barrett's esophagus](https://en.wikipedia.org/wiki/Barrett%27s_esophagus).
 * RAG concepts, advantages, limitations, components and the flow of data.
 * Environment setup for AI/ML experimentation and tools using Ollama and HuggingFace from Streamlit apps and Jupyter notebooks.
+* Next steps and suggestions on where to learn more.
+* Bibliography of referenced tools, papers, and articles.
 
-
-
-
-
-Concluding with next steps and suggestions on where to learn more and a bibliography of all tools, papers, and other materials referenced in the exercises and presentation.
-
-
-
-In addition to the hands-on workshop, this repo also cointains an example of creating an LLM Agent app using Streamlit and Langchain as an additional example for participants to explare later.
+This repo also contains an example source for creating an LLM Agent app using Streamlit and Langchain as an additional example for participants to explare later.
 

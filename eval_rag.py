@@ -17,6 +17,7 @@ def run_batch(queries):
     context_docs = []
 
     def save_context(docs):
+        # print(f"Saving context of {len(docs)} docs")
         context_docs.append([doc.page_content for doc in docs])
         return docs
 
@@ -38,14 +39,22 @@ def run_batch(queries):
 
 def main():
     testset_path = "testset.csv"
-    results_path = "rag_results.json"
+    results_path = "rag_results.csv"
 
     testset_df = pd.read_csv(testset_path)
+
+    testset_df = testset_df.head(3)   # TODO; remove
+    
     queries = testset_df['Question']
 
     df = run_batch(queries)
     df['ground_truth'] = testset_df['Correct Answer']
-    df.to_json(results_path)
+
+    # escape ';' then use it as join delimiter.
+    df["cleaned_contexts"] = df["contexts"].apply(lambda items: ';'.join([s.replace(';', ' ') for s in items]))
+    df["contexts"] = df["cleaned_contexts"] 
+    
+    df.to_csv(results_path)
 
 if __name__ == '__main__':
     main()

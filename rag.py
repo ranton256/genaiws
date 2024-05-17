@@ -17,7 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 # setup constants
-USE_CUSTOM_PROMPT = True
+USE_CUSTOM_PROMPT = False
 
 MODEL_ID="gemma:2b"
 # MODEL_ID="mistral"
@@ -165,8 +165,8 @@ def filename_from_url(url):
 
 def split_documents(docs):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=50,
+        chunk_size=512, # 1000,
+        chunk_overlap=128, # 50,
         length_function=len,
         is_separator_regex=False)
 
