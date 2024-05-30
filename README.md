@@ -8,6 +8,8 @@ The complete setup instructions are available in [DDW GenAI Workshop Prerequisit
 
 They are also available at https://tinyurl.com/setupgenaiws 
 
+The slides are available at https://tinyurl.com/genaiws-slides
+
 ### Setup in Brief
 
 1. Download ZIP archive of workshop files: https://tinyurl.com/genaiws2024 
