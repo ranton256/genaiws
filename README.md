@@ -24,6 +24,17 @@ This repo contains the source code and other files for the Interactive Hands-On 
 
 This workshop covers foundational models and applications in natural language processing, in context of the medical field in general and gastroenterology in specific.
 
+### Setup Walkthrough Videos
+
+There are video recordings of the setup for the workshop lab available.
+
+- YouTube Playlist: https://www.youtube.com/playlist?list=PL1ZfNGUkCn1tZTFkknw4CxbM3jgESVbaw
+
+- Setup part 1 Mac: https://youtu.be/JMtfXQPVQhg
+- Setup part 1 Win: https://youtu.be/TgITVLP-HE0
+- Setup part 2: https://youtu.be/BiKrTAdAFxE
+
+
 ### Topics Covered
 
 * Introduction to generative AI and large language model (LLM) concepts such as tokenization, embedding, transformer models, 
