@@ -53,7 +53,7 @@ if want_subset:
 
 @pytest.mark.parametrize(
     "test_case",
-    dataset,
+    dataset.test_cases,
 )
 def test_rag_retrieval(test_case: LLMTestCase):
     contextual_precision = ContextualPrecisionMetric(threshold=0.3)
@@ -65,7 +65,7 @@ def test_rag_retrieval(test_case: LLMTestCase):
 
 @pytest.mark.parametrize(
     "test_case",
-    dataset,
+    dataset.test_cases,
 )
 def test_rag_generation(test_case: LLMTestCase):
     answer_relevancy = AnswerRelevancyMetric(threshold=0.5)
