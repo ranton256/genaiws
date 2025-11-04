@@ -8,3 +8,4 @@ __pycache__/
 *.sqlite
 *.pkl
 .temp-deepeval-cache.json
+.env
