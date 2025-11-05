@@ -9,3 +9,5 @@ __pycache__/
 *.pkl
 .temp-deepeval-cache.json
 .env
+.venv/
+rag_results.csv
